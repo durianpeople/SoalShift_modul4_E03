@@ -13,6 +13,7 @@
 
 static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
 static const char *mountpoint = "/home/durianpeople/Documents/Notes/SISOP/REPO/mount_point";
+const int encoding_key = 17;
 
 char outputcipher[2] = "";
 char *cipher(char input, int key)
@@ -231,7 +232,7 @@ int main(int argc, char *argv[])
     // char output[1000] = "";
     // for (int i = 0; i < strlen(input); i++)
     // {
-    //     strcat(output, cipher(input[i], 17));
+    //     strcat(output, cipher(input[i], encoding_key));
     // }
     // printf("%s\n", output);
     // return 0;
