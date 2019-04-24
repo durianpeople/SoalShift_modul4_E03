@@ -9,6 +9,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 char outputcipher[2] = "";
 char *cipher(char input, int key)
