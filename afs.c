@@ -117,6 +117,13 @@ char *cipher(char input, int key)
 }
 
 //fungsi xmp_*()
+static int xmp_getattr(const char *path, struct stat *st)
+{
+    st->st_uid = getuid();
+    st->st_gid = getgid();
+    st->st_atime = time(NULL);
+    st->st_mtime = time(NULL);
+}
 
 static struct fuse_operations xmp_oper = {
     //
