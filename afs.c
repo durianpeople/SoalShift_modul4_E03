@@ -237,7 +237,7 @@ int main(int argc, char *argv[])
     // char input[1000];
     // scanf("%s", input);
     // char output[1000] = "";
-    // cipherString(input, output, 17);
+    // cipherString(input, output, encoding_key);
     // printf("%s\n", output);
     return 0;
 }
