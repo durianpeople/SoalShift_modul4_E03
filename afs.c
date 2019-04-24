@@ -122,6 +122,16 @@ char *cipher(char input, int key)
 }
 
 //fungsi xmp_*()
+
+void xmp_init(struct fuse_conn_info *conn, struct fuse_config *cfg) //sebelum mount
+{
+    //NO 2
+}
+void xmp_destroy(struct fuse_conn_info *conn, struct fuse_config *cfg) //sebelum mount
+{
+    //NO 2
+}
+
 static int xmp_getattr(const char *path, struct stat *stbuf)
 {
     int res;
@@ -177,6 +187,8 @@ static struct fuse_operations xmp_oper = {
     //
     .getattr = xmp_getattr,
     .readdir = xmp_readdir,
+    .init = xmp_init,
+    .destroy = xmp_destroy,
 };
 
 int main(int argc, char *argv[])
