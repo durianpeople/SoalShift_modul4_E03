@@ -123,14 +123,21 @@ char *cipher(char input, int key)
     return outputcipher;
 }
 
+void cipherString(char *input, char *output, int key)
+{
+    for (int i = 0; i < strlen(input); i++)
+    {
+        strcat(output, cipher(input[i], encoding_key));
+    }
+}
+
 //fungsi xmp_*()
 
 void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
 {
     //NO 2
-    char target[10000] = "";
-    strcat(target, mountable);
-    strcat(target, "/Videos");
+    char target[1000];
+    sprintf(target, "%s%s", mountable, "/Videos");
     struct stat st = {0};
 
     if (stat(target, &st) == -1)
@@ -142,9 +149,8 @@ void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
 void xmp_destroy(void *private_data) //sebelum unmount
 {
     //NO 2
-    char target[10000] = "";
-    strcat(target, mountable);
-    strcat(target, "/Videos");
+    char target[1000];
+    sprintf(target, "%s%s", mountable, "/Videos");
     rmdir(target);
 }
 
@@ -199,18 +205,19 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     return 0;
 }
 
-int xmp_mkdir(const char *path, mode_t mode)
+static int xmp_mkdir(const char *path, mode_t mode)
 {
     //NO 4
-    char folderyoutuber[10000] = "";
-    strcat(folderyoutuber, mountpoint);
-    strcat(folderyoutuber, "/YOUTUBER");
-    if (strcmp(path, folderyoutuber) == 0)
-    {
-        return mkdir(path, 0750);
-    }
-    else
-        return mkdir(path, mode);
+    // char folderyoutuber[1000] = "";
+    // strcat(folderyoutuber, mountpoint);
+    // strcat(folderyoutuber, "/YOUTUBER");
+    // if (strcmp(path, folderyoutuber) == 0)
+    // {
+    //     return mkdir(path, 0750);
+    // }
+    // else
+    // printf("path: %s\n", path);
+    return mkdir(path, mode);
 }
 
 static struct fuse_operations xmp_oper = {
@@ -230,10 +237,7 @@ int main(int argc, char *argv[])
     // char input[1000];
     // scanf("%s", input);
     // char output[1000] = "";
-    // for (int i = 0; i < strlen(input); i++)
-    // {
-    //     strcat(output, cipher(input[i], encoding_key));
-    // }
+    // cipherString(input, output, 17);
     // printf("%s\n", output);
-    // return 0;
+    return 0;
 }
