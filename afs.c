@@ -129,7 +129,7 @@ void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
     //NO 2
     char target[10000] = "";
     strcat(target, mountable);
-    strcat(target, "/testfolder");
+    strcat(target, "/Videos");
     struct stat st = {0};
 
     if (stat(target, &st) == -1)
@@ -143,7 +143,7 @@ void xmp_destroy(void *private_data) //sebelum unmount
     //NO 2
     char target[10000] = "";
     strcat(target, mountable);
-    strcat(target, "/testfolder");
+    strcat(target, "/Videos");
     rmdir(target);
 }
 
@@ -200,9 +200,16 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 int xmp_mkdir(const char *path, mode_t mode)
 {
-    if (strcmp(path, ""))
+    //NO 4
+    char folderyoutuber[10000] = "";
+    strcat(folderyoutuber, mountpoint);
+    strcat(folderyoutuber, "/YOUTUBER");
+    if (strcmp(path, folderyoutuber) == 0)
     {
+        return mkdir(path, 0750);
     }
+    else
+        return mkdir(path, mode);
 }
 
 static struct fuse_operations xmp_oper = {
