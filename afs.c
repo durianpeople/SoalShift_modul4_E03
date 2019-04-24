@@ -133,6 +133,7 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
 
 static struct fuse_operations xmp_oper = {
     //
+    .getattr = xmp_getattr,
 };
 
 int main(int argc, char *argv[])
