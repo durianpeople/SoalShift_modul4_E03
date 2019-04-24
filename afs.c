@@ -1,12 +1,14 @@
 #define FUSE_USE_VERSION 28
 #include <fuse.h>
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <string.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
-#include <sys/time.h>
+#include <stdlib.h>
 
 char outputcipher[2] = "";
 char *cipher(char input, int key)
@@ -117,12 +119,15 @@ char *cipher(char input, int key)
 }
 
 //fungsi xmp_*()
-static int xmp_getattr(const char *path, struct stat *st)
+static int xmp_getattr(const char *path, struct stat *stbuf)
 {
-    st->st_uid = getuid();
-    st->st_gid = getgid();
-    st->st_atime = time(NULL);
-    st->st_mtime = time(NULL);
+    int res;
+
+    res = lstat(path, stbuf);
+    if (res == -1)
+        return -errno;
+
+    return 0;
 }
 
 static struct fuse_operations xmp_oper = {
