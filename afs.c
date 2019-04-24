@@ -123,13 +123,16 @@ char *cipher(char input, int key)
 
 //fungsi xmp_*()
 
-void xmp_init(struct fuse_conn_info *conn, struct fuse_config *cfg) //sebelum mount
+void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
 {
     //NO 2
+    mkdir("/home/durianpeople/Documents/Notes/SISOP/REPO/mountable/testfolder", 0700);
+    return 0;
 }
-void xmp_destroy(struct fuse_conn_info *conn, struct fuse_config *cfg) //sebelum mount
+void xmp_destroy(void *private_data) //sebelum unmount
 {
     //NO 2
+    rmdir("/home/durianpeople/Documents/Notes/SISOP/REPO/mountable/testfolder");
 }
 
 static int xmp_getattr(const char *path, struct stat *stbuf)
