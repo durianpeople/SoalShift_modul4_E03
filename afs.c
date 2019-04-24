@@ -11,7 +11,8 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
-static const char *dirpath = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
+static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
+static const char *mountpoint = "/home/durianpeople/Documents/Notes/SISOP/REPO/mount_point";
 
 char outputcipher[2] = "";
 char *cipher(char input, int key)
@@ -126,20 +127,31 @@ char *cipher(char input, int key)
 void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
 {
     //NO 2
-    mkdir("/home/durianpeople/Documents/Notes/SISOP/REPO/mountable/testfolder", 0700);
+    char target[10000] = "";
+    strcat(target, mountable);
+    strcat(target, "/testfolder");
+    struct stat st = {0};
+
+    if (stat(target, &st) == -1)
+    {
+        mkdir(target, 0700);
+    }
     return 0;
 }
 void xmp_destroy(void *private_data) //sebelum unmount
 {
     //NO 2
-    rmdir("/home/durianpeople/Documents/Notes/SISOP/REPO/mountable/testfolder");
+    char target[10000] = "";
+    strcat(target, mountable);
+    strcat(target, "/testfolder");
+    rmdir(target);
 }
 
 static int xmp_getattr(const char *path, struct stat *stbuf)
 {
     int res;
     char fpath[1000];
-    sprintf(fpath, "%s%s", dirpath, path);
+    sprintf(fpath, "%s%s", mountable, path);
     res = lstat(fpath, stbuf);
 
     if (res == -1)
@@ -154,11 +166,11 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     char fpath[1000];
     if (strcmp(path, "/") == 0)
     {
-        path = dirpath;
+        path = mountable;
         sprintf(fpath, "%s", path);
     }
     else
-        sprintf(fpath, "%s%s", dirpath, path);
+        sprintf(fpath, "%s%s", mountable, path);
     int res = 0;
 
     DIR *dp;
@@ -186,12 +198,20 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     return 0;
 }
 
+int xmp_mkdir(const char *path, mode_t mode)
+{
+    if (strcmp(path, ""))
+    {
+    }
+}
+
 static struct fuse_operations xmp_oper = {
     //
     .getattr = xmp_getattr,
     .readdir = xmp_readdir,
     .init = xmp_init,
     .destroy = xmp_destroy,
+    .mkdir = xmp_mkdir,
 };
 
 int main(int argc, char *argv[])
