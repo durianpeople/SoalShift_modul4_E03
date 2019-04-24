@@ -1,4 +1,5 @@
 #define FUSE_USE_VERSION 28
+#define CIPHERMAX 94
 #include <fuse.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -123,7 +124,7 @@ char *cipher(char input, int key)
     return outputcipher;
 }
 
-void cipherString(char *input, char *output, int key)
+void cipherString(const char *input, char *output, int key)
 {
     for (int i = 0; i < strlen(input); i++)
     {
@@ -158,7 +159,10 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
 {
     int res;
     char fpath[1000];
-    sprintf(fpath, "%s%s", mountable, path);
+    //NO 1
+    char dpath[1000] = "";
+    cipherString(path, dpath, CIPHERMAX - encoding_key);
+    sprintf(fpath, "%s%s", mountable, dpath);
     res = lstat(fpath, stbuf);
 
     if (res == -1)
@@ -196,7 +200,9 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         memset(&st, 0, sizeof(st));
         st.st_ino = de->d_ino;
         st.st_mode = de->d_type << 12;
-        res = (filler(buf, de->d_name, &st, 0));
+        char ename[1000] = "";
+        cipherString(de->d_name, ename, encoding_key);
+        res = (filler(buf, ename, &st, 0));
         if (res != 0)
             break;
     }
