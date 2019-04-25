@@ -14,7 +14,7 @@
 
 static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
 static const char *mountpoint = "/home/durianpeople/Documents/Notes/SISOP/REPO/mount_point";
-const int encoding_key = 17;
+const int encryption_key = 17;
 
 char outputcipher[2] = "";
 char *cipher(char input, int key)
@@ -128,7 +128,7 @@ void cipherString(const char *input, char *output, int key)
 {
     for (int i = 0; i < strlen(input); i++)
     {
-        strcat(output, cipher(input[i], encoding_key));
+        strcat(output, cipher(input[i], key));
     }
 }
 
@@ -160,11 +160,10 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
     int res;
     char fpath[1000];
     //NO 1
-    char dpath[1000] = "";
-    cipherString(path, dpath, CIPHERMAX - encoding_key);
-    sprintf(fpath, "%s%s", mountable, dpath);
+    char decrypted_path[1000] = "";
+    cipherString(path, decrypted_path, CIPHERMAX - encryption_key);
+    sprintf(fpath, "%s%s", mountable, decrypted_path);
     res = lstat(fpath, stbuf);
-
     if (res == -1)
         return -errno;
 
@@ -200,9 +199,11 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         memset(&st, 0, sizeof(st));
         st.st_ino = de->d_ino;
         st.st_mode = de->d_type << 12;
-        char ename[1000] = "";
-        cipherString(de->d_name, ename, encoding_key);
-        res = (filler(buf, ename, &st, 0));
+        //NO 1
+        char encrypted_name[1000] = "";
+        cipherString(de->d_name, encrypted_name, encryption_key);
+
+        res = (filler(buf, encrypted_name, &st, 0));
         if (res != 0)
             break;
     }
@@ -213,17 +214,14 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 static int xmp_mkdir(const char *path, mode_t mode)
 {
-    //NO 4
-    // char folderyoutuber[1000] = "";
-    // strcat(folderyoutuber, mountpoint);
-    // strcat(folderyoutuber, "/YOUTUBER");
-    // if (strcmp(path, folderyoutuber) == 0)
-    // {
-    //     return mkdir(path, 0750);
-    // }
-    // else
-    // printf("path: %s\n", path);
-    return mkdir(path, mode);
+    int res;
+    char fpath[1000];
+    sprintf(fpath, "%s%s", mountable, path);
+    res = mkdir(fpath, mode);
+    if (res == -1)
+        return -errno;
+
+    return 0;
 }
 
 static struct fuse_operations xmp_oper = {
@@ -243,7 +241,7 @@ int main(int argc, char *argv[])
     // char input[1000];
     // scanf("%s", input);
     // char output[1000] = "";
-    // cipherString(input, output, encoding_key);
+    // cipherString(input, output, encryption_key);
     // printf("%s\n", output);
     return 0;
 }
