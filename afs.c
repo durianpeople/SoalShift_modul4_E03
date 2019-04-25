@@ -239,6 +239,72 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     return 0;
 }
 
+static int xmp_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(path, encrypted_path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+
+    res = creat(fpath, mode);
+    if (res == -1)
+        res = -errno;
+
+    return res;
+}
+
+static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
+{
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(path, encrypted_path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+
+    res = mknod(fpath, mode, rdev);
+    if (res == -1)
+        res = -errno;
+
+    return res;
+}
+
+static int xmp_open(const char *path, struct fuse_file_info *fi)
+{
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(path, encrypted_path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+
+    res = open(fpath, fi->flags);
+    if (res == -1)
+        res = -errno;
+
+    return res;
+}
+
 static int xmp_write(const char *path, const char *buf, size_t size,
                      off_t offset, struct fuse_file_info *fi)
 {
@@ -251,7 +317,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
     if (strcmp(path, "/") == 0)
     {
         path = mountable;
-        sprintf(fpath, "%s", encrypted_path);
+        sprintf(fpath, "%s", path);
     }
     else
         sprintf(fpath, "%s%s", mountable, encrypted_path);
@@ -282,6 +348,50 @@ static int xmp_mkdir(const char *path, mode_t mode)
     return 0;
 }
 
+static int xmp_unlink(const char *path)
+{
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(path, encrypted_path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+
+    res = unlink(fpath);
+    if (res == -1)
+        res = -errno;
+
+    return res;
+}
+
+static int xmp_rmdir(const char *path)
+{
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(path, encrypted_path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+
+    res = rmdir(fpath);
+    if (res == -1)
+        res = -errno;
+
+    return res;
+}
+
 static struct fuse_operations xmp_oper = {
     //
     .getattr = xmp_getattr,
@@ -290,6 +400,11 @@ static struct fuse_operations xmp_oper = {
     .destroy = xmp_destroy,
     .mkdir = xmp_mkdir,
     .write = xmp_write,
+    .create = xmp_create,
+    .mknod = xmp_mknod,
+    .open = xmp_open,
+    .unlink = xmp_unlink,
+    .rmdir = xmp_rmdir,
 };
 
 int main(int argc, char *argv[])
