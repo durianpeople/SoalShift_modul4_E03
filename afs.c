@@ -14,6 +14,7 @@
 
 static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
 const int encryption_key = 17;
+const int bypass_mkv = 1;
 
 char outputcipher[2] = "";
 char *cipher(char input, int key)
@@ -234,9 +235,27 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         else
             cipherString(decrypted_name, de->d_name, CIPHERMAX - encryption_key);
 
-        res = (filler(buf, decrypted_name, &st, 0));
-        if (res != 0)
-            break;
+        char tmpfilename[1000] = "";
+        get_filename_name(decrypted_name, tmpfilename);
+        if (strcmp(get_filename_ext(tmpfilename), "mkv") == 0 && de->d_type != 4)
+        {
+            strcpy(excluded, tmpfilename);
+        }
+        if (bypass_mkv)
+        {
+            if (strcmp(excluded, tmpfilename) != 0)
+            {
+                res = (filler(buf, decrypted_name, &st, 0));
+                if (res != 0)
+                    break;
+            }
+        }
+        else
+        {
+            res = (filler(buf, decrypted_name, &st, 0));
+            if (res != 0)
+                break;
+        }
     }
 
     closedir(dp);
