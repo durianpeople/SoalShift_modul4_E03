@@ -1,6 +1,6 @@
+#define _GNU_SOURCE
 #define FUSE_USE_VERSION 28
 #define CIPHERMAX 94
-#include <fuse.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -11,11 +11,15 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <fuse.h>
+#include <pthread.h>
+#include <sys/wait.h>
 
 static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
 const int encryption_key = 17;
-const int bypass_mkv = 1;
+const int bypass_mkv = 0;
 
+pthread_t mergeThreadID;
 char outputcipher[2] = "";
 char *cipher(char input, int key)
 {
@@ -150,6 +154,35 @@ void get_filename_name(const char *filename, char *target)
         strncpy(target, filename, strlen(filename) - strlen(dot) - 0);
 }
 
+static int stringCompare(const void *a, const void *b)
+{
+    return strcmp(*(const char **)a, *(const char **)b);
+}
+
+void sortString(const char *arr[], int n)
+{
+    qsort(arr, n, sizeof(const char *), stringCompare);
+}
+
+void *mergeThread(void *arg)
+{
+    printf("Thread created\n");
+    // struct dirent **namelist;
+    // int n = scandir(".", &namelist, 0, alphasort);
+    // if (n < 0)
+    //     perror("scandir");
+    // else
+    // {
+    //     while (n--)
+    //     {
+    //         printf("%s\n", namelist[n]->d_name);
+    //         free(namelist[n]);
+    //     }
+    //     free(namelist);
+    // }
+    return 0;
+}
+
 //fungsi xmp_*()
 
 void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
@@ -165,11 +198,16 @@ void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
     {
         mkdir(target, 0700);
     }
+
+    if (pthread_create(&mergeThreadID, NULL, &mergeThread, NULL) != 0)
+        printf("Failed to create thread\n");
     return 0;
 }
 void xmp_destroy(void *private_data) //sebelum unmount
 {
     //NO 2
+    printf("Waiting for thread...\n");
+    pthread_join(mergeThreadID, NULL);
     char target[1000];
     char encrypted_foldername[1000] = "";
     cipherString(encrypted_foldername, "/Videos", encryption_key);
@@ -194,7 +232,7 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
 }
 
 static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-                       off_t offset, struct fuse_file_info *fi)
+                       off_t offset, struct fuse_file_info *fi) //clear
 {
     char fpath[1000];
     char encrypted_path[1000] = "";
@@ -262,7 +300,37 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     return 0;
 }
 
-static int xmp_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
+                    struct fuse_file_info *fi) //template approved
+{
+    int fd;
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(encrypted_path, path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+
+    (void)fi;
+    fd = open(fpath, O_RDONLY);
+    if (fd == -1)
+        return -errno;
+
+    res = pread(fd, buf, size, offset);
+    if (res == -1)
+        res = -errno;
+
+    close(fd);
+    return res;
+}
+
+static int xmp_create(const char *path, mode_t mode, struct fuse_file_info *fi) //template approved
 {
     int res;
     //NO 1
@@ -277,14 +345,15 @@ static int xmp_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     else
         sprintf(fpath, "%s%s", mountable, encrypted_path);
 
+    (void)fi;
     res = creat(fpath, mode);
     if (res == -1)
         res = -errno;
-
-    return res;
+    close(res);
+    return 0;
 }
 
-static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
+static int xmp_chmod(const char *path, mode_t mode) //template approved
 {
     int res;
     //NO 1
@@ -299,14 +368,155 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
     else
         sprintf(fpath, "%s%s", mountable, encrypted_path);
 
-    res = mknod(fpath, mode, rdev);
+    res = chmod(fpath, mode);
     if (res == -1)
         res = -errno;
-
-    return res;
+    return 0;
 }
 
-static int xmp_open(const char *path, struct fuse_file_info *fi)
+static int xmp_chown(const char *path, uid_t uid, gid_t gid)
+{
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(encrypted_path, path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+    res = lchown(fpath, uid, gid);
+    if (res == -1)
+        return -errno;
+
+    return 0;
+}
+
+static int xmp_statfs(const char *path, struct statvfs *stbuf)
+{
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(encrypted_path, path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+    res = statvfs(fpath, stbuf);
+    if (res == -1)
+        return -errno;
+
+    return 0;
+}
+
+static int xmp_release(const char *path, struct fuse_file_info *fi)
+{
+    /* Just a stub.	 This method is optional and can safely be left
+	   unimplemented */
+
+    (void)path;
+    (void)fi;
+    return 0;
+}
+
+static int xmp_fsync(const char *path, int isdatasync,
+                     struct fuse_file_info *fi)
+{
+    /* Just a stub.	 This method is optional and can safely be left
+	   unimplemented */
+
+    (void)path;
+    (void)isdatasync;
+    (void)fi;
+    return 0;
+}
+
+int xmp_truncate(const char *path, off_t size) //template approved
+{
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(encrypted_path, path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+
+    res = truncate(fpath, size);
+    if (res == -1)
+        res = -errno;
+    return 0;
+}
+
+int xmp_utimens(const char *path, const struct timespec ts[2]) //template approved
+{
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(encrypted_path, path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+    struct timeval tv[2];
+    tv[0].tv_sec = ts[0].tv_sec;
+    tv[0].tv_usec = ts[0].tv_nsec / 1000;
+    tv[1].tv_sec = ts[1].tv_sec;
+    tv[1].tv_usec = ts[1].tv_nsec / 1000;
+
+    res = utimes(path, tv);
+    if (res == -1)
+        res = -errno;
+    return 0;
+}
+
+static int xmp_mknod(const char *path, mode_t mode, dev_t rdev) //template approved
+{
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(encrypted_path, path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+
+    if (S_ISREG(mode))
+    {
+        res = open(fpath, O_CREAT | O_EXCL | O_WRONLY, mode);
+        if (res >= 0)
+            res = close(res);
+    }
+    else if (S_ISFIFO(mode))
+        res = mkfifo(fpath, mode);
+    else
+        res = mknod(fpath, mode, rdev);
+    if (res == -1)
+        return -errno;
+
+    return 0;
+}
+
+static int xmp_open(const char *path, struct fuse_file_info *fi) //template approved?
 {
     int res;
     //NO 1
@@ -324,12 +534,12 @@ static int xmp_open(const char *path, struct fuse_file_info *fi)
     res = open(fpath, fi->flags);
     if (res == -1)
         res = -errno;
-
-    return res;
+    close(res);
+    return 0;
 }
 
 static int xmp_write(const char *path, const char *buf, size_t size,
-                     off_t offset, struct fuse_file_info *fi)
+                     off_t offset, struct fuse_file_info *fi) //template approved
 {
     int fd;
     int res;
@@ -345,6 +555,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
     else
         sprintf(fpath, "%s%s", mountable, encrypted_path);
 
+    (void)fi;
     fd = open(fpath, O_WRONLY);
     if (fd == -1)
         return -errno;
@@ -357,7 +568,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
     return res;
 }
 
-static int xmp_mkdir(const char *path, mode_t mode)
+static int xmp_mkdir(const char *path, mode_t mode) //template approved
 {
     int res;
     char fpath[1000];
@@ -390,7 +601,7 @@ static int xmp_unlink(const char *path)
     if (res == -1)
         res = -errno;
 
-    return res;
+    return 0;
 }
 
 static int xmp_rmdir(const char *path)
@@ -412,7 +623,7 @@ static int xmp_rmdir(const char *path)
     if (res == -1)
         res = -errno;
 
-    return res;
+    return 0;
 }
 
 static struct fuse_operations xmp_oper = {
@@ -428,6 +639,14 @@ static struct fuse_operations xmp_oper = {
     .open = xmp_open,
     .unlink = xmp_unlink,
     .rmdir = xmp_rmdir,
+    .chmod = xmp_chmod,
+    .truncate = xmp_truncate,
+    .utimens = xmp_utimens,
+    .read = xmp_read,
+    .release = xmp_release,
+    .statfs = xmp_statfs,
+    .chown = xmp_chown,
+    .fsync = xmp_fsync,
 };
 
 int main(int argc, char *argv[])
