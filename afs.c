@@ -132,6 +132,24 @@ void cipherString(const char *input, char *output, int key)
     }
 }
 
+//NO 2
+const char *get_filename_ext(const char *filename)
+{
+    const char *dot = strrchr(filename, '.');
+    if (!dot || dot == filename)
+        return "";
+    return dot + 1;
+}
+
+void get_filename_name(const char *filename, char *target)
+{
+    const char *dot = strrchr(filename, '.');
+    if (!dot || dot == filename || dot == NULL)
+        strcpy(target, filename);
+    else
+        strncpy(target, filename, strlen(filename) - strlen(dot) - 0);
+}
+
 //fungsi xmp_*()
 
 void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
@@ -160,9 +178,9 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
     int res;
     char fpath[1000];
     //NO 1
-    char decrypted_path[1000] = "";
-    cipherString(path, decrypted_path, CIPHERMAX - encryption_key);
-    sprintf(fpath, "%s%s", mountable, decrypted_path);
+    char encrypted_path[1000] = "";
+    cipherString(path, encrypted_path, CIPHERMAX - encryption_key);
+    sprintf(fpath, "%s%s", mountable, encrypted_path);
     res = lstat(fpath, stbuf);
     if (res == -1)
         return -errno;
@@ -193,6 +211,8 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     if (dp == NULL)
         return -errno;
 
+    //NO 2
+    char excluded[1000] = "";
     while ((de = readdir(dp)) != NULL)
     {
         struct stat st;
@@ -200,12 +220,27 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         st.st_ino = de->d_ino;
         st.st_mode = de->d_type << 12;
         //NO 1
-        char encrypted_name[1000] = "";
-        cipherString(de->d_name, encrypted_name, encryption_key);
+        char decrypted_name[1000] = "";
+        cipherString(de->d_name, decrypted_name, encryption_key);
 
-        res = (filler(buf, encrypted_name, &st, 0));
-        if (res != 0)
-            break;
+        //NO 2
+        char tmpname[1000] = "";
+        get_filename_name(decrypted_name, tmpname);
+        if (strcmp(get_filename_ext(decrypted_name), "000") == 0 && strcmp(get_filename_ext(tmpname), "mkv") == 0 && de->d_type != 4)
+        {
+            if (strcmp(excluded, "") != 0)
+            {
+                //create thread
+            }
+            strcpy(excluded, tmpname);
+        }
+
+        if (strcmp(excluded, tmpname) != 0)
+        {
+            res = (filler(buf, decrypted_name, &st, 0));
+            if (res != 0)
+                break;
+        }
     }
 
     closedir(dp);
