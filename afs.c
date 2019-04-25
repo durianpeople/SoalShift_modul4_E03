@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 
 static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
+static const char *mount_point = "/home/durianpeople/Documents/Notes/SISOP/REPO/mount_point";
 const int encryption_key = 17;
 const int bypass_mkv = 0;
 
@@ -167,19 +168,58 @@ void sortString(const char *arr[], int n)
 void *mergeThread(void *arg)
 {
     printf("Thread created\n");
-    // struct dirent **namelist;
-    // int n = scandir(".", &namelist, 0, alphasort);
-    // if (n < 0)
-    //     perror("scandir");
-    // else
-    // {
-    //     while (n--)
-    //     {
-    //         printf("%s\n", namelist[n]->d_name);
-    //         free(namelist[n]);
-    //     }
-    //     free(namelist);
-    // }
+    struct dirent **namelist;
+    int n = scandir(mount_point, &namelist, 0, alphasort);
+    if (n < 0)
+        perror("scandir");
+    else
+    {
+        char destpath[2000] = "";
+        char destname[1000] = "";
+        char sourcepath[1000] = "";
+        for (int ii = 0; ii < n; ii++)
+        {
+            printf("Checking: %s\n", namelist[ii]->d_name);
+            char tmpname[1000] = "";
+            get_filename_name(namelist[ii]->d_name, tmpname);
+
+            printf("\tTmpname: %s\n", tmpname);
+            printf("\tDestname: %s\n", destname);
+            if (strcmp(get_filename_ext(namelist[ii]->d_name), "000") == 0 &&
+                strcmp(get_filename_ext(tmpname), "mkv") == 0 &&
+                namelist[ii]->d_type != 4)
+            {
+                sprintf(destpath, "%s/Videos/%s", mount_point, tmpname);
+                strcpy(destname, tmpname);
+                sprintf(sourcepath, "%s/%s", mount_point, namelist[ii]->d_name);
+            }
+            else if (strcmp(tmpname, destname) == 0)
+            {
+                sprintf(sourcepath, "%s/%s", mount_point, namelist[ii]->d_name);
+            }
+            else
+                strcpy(destpath, "");
+            if (strcmp(destpath, "") != 0)
+            {
+                printf("Merging %s\n", sourcepath);
+                printf("To %s\n", destpath);
+                FILE *source = fopen(sourcepath, "rb");
+                FILE *dest = fopen(destpath, "ab+");
+
+                char c = fgetc(source);
+                while (c != EOF)
+                {
+                    fputc(c, dest);
+                    c = fgetc(source);
+                }
+
+                fclose(source);
+                fclose(dest);
+            }
+            free(namelist[ii]);
+        }
+        free(namelist);
+    }
     return 0;
 }
 
@@ -208,10 +248,24 @@ void xmp_destroy(void *private_data) //sebelum unmount
     //NO 2
     printf("Waiting for thread...\n");
     pthread_join(mergeThreadID, NULL);
-    char target[1000];
+
+    printf("Deleting files...\n");
+    DIR *dp;
+    struct dirent *de;
+
     char encrypted_foldername[1000] = "";
     cipherString(encrypted_foldername, "/Videos", encryption_key);
+    char target[1000];
     sprintf(target, "%s%s", mountable, encrypted_foldername);
+    dp = opendir(target);
+    while ((de = readdir(dp)) != NULL)
+    {
+        char spath[2000];
+        sprintf(spath, "%s/%s", target, de->d_name);
+        remove(spath);
+    }
+    closedir(dp);
+
     printf("Destroy folder %s\n", target);
     rmdir(target);
 }
