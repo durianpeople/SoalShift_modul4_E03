@@ -124,7 +124,7 @@ char *cipher(char input, int key)
     return outputcipher;
 }
 
-void cipherString(const char *input, char *output, int key)
+void cipherString(char *output, const char *input, int key)
 {
     for (int i = 0; i < strlen(input); i++)
     {
@@ -157,7 +157,7 @@ void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
     //NO 2
     char target[1000];
     char encrypted_foldername[1000] = "";
-    cipherString("/Videos", encrypted_foldername, encryption_key);
+    cipherString(encrypted_foldername, "/Videos", encryption_key);
     sprintf(target, "%s%s", mountable, encrypted_foldername);
     struct stat st = {0};
     printf("Create folder %s\n", target);
@@ -172,7 +172,7 @@ void xmp_destroy(void *private_data) //sebelum unmount
     //NO 2
     char target[1000];
     char encrypted_foldername[1000] = "";
-    cipherString("/Videos", encrypted_foldername, encryption_key);
+    cipherString(encrypted_foldername, "/Videos", encryption_key);
     sprintf(target, "%s%s", mountable, encrypted_foldername);
     printf("Destroy folder %s\n", target);
     rmdir(target);
@@ -184,7 +184,7 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
     char fpath[1000];
     //NO 1
     char encrypted_path[1000] = "";
-    cipherString(path, encrypted_path, encryption_key);
+    cipherString(encrypted_path, path, encryption_key);
     sprintf(fpath, "%s%s", mountable, encrypted_path);
     res = lstat(fpath, stbuf);
     if (res == -1)
@@ -198,7 +198,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 {
     char fpath[1000];
     char encrypted_path[1000] = "";
-    cipherString(path, encrypted_path, encryption_key);
+    cipherString(encrypted_path, path, encryption_key);
     if (strcmp(path, "/") == 0)
     {
         strcpy(encrypted_path, mountable);
@@ -233,7 +233,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
             strcpy(decrypted_name, de->d_name);
         else
-            cipherString(de->d_name, decrypted_name, CIPHERMAX - encryption_key);
+            cipherString(decrypted_name, de->d_name, CIPHERMAX - encryption_key);
 
         res = (filler(buf, decrypted_name, &st, 0));
         if (res != 0)
@@ -249,7 +249,7 @@ static int xmp_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     int res;
     //NO 1
     char encrypted_path[1000] = "";
-    cipherString(path, encrypted_path, encryption_key);
+    cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
     if (strcmp(path, "/") == 0)
     {
@@ -271,7 +271,7 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
     int res;
     //NO 1
     char encrypted_path[1000] = "";
-    cipherString(path, encrypted_path, encryption_key);
+    cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
     if (strcmp(path, "/") == 0)
     {
@@ -293,7 +293,7 @@ static int xmp_open(const char *path, struct fuse_file_info *fi)
     int res;
     //NO 1
     char encrypted_path[1000] = "";
-    cipherString(path, encrypted_path, encryption_key);
+    cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
     if (strcmp(path, "/") == 0)
     {
@@ -317,7 +317,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
     int res;
     //NO 1
     char encrypted_path[1000] = "";
-    cipherString(path, encrypted_path, encryption_key);
+    cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
     if (strcmp(path, "/") == 0)
     {
@@ -344,7 +344,7 @@ static int xmp_mkdir(const char *path, mode_t mode)
     int res;
     char fpath[1000];
     char encrypted_path[1000] = "";
-    cipherString(path, encrypted_path, encryption_key);
+    cipherString(encrypted_path, path, encryption_key);
     sprintf(fpath, "%s%s", mountable, encrypted_path);
     res = mkdir(fpath, mode);
     if (res == -1)
@@ -358,7 +358,7 @@ static int xmp_unlink(const char *path)
     int res;
     //NO 1
     char encrypted_path[1000] = "";
-    cipherString(path, encrypted_path, encryption_key);
+    cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
     if (strcmp(path, "/") == 0)
     {
@@ -380,7 +380,7 @@ static int xmp_rmdir(const char *path)
     int res;
     //NO 1
     char encrypted_path[1000] = "";
-    cipherString(path, encrypted_path, encryption_key);
+    cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
     if (strcmp(path, "/") == 0)
     {
@@ -420,7 +420,7 @@ int main(int argc, char *argv[])
     // char input[1000];
     // scanf("%s", input);
     // char output[1000] = "";
-    // cipherString(input, output, encryption_key);
+    // cipherString( output, input,encryption_key);
     // printf("%s\n", output);
     return 0;
 }
