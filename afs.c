@@ -247,11 +247,42 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     return 0;
 }
 
+static int xmp_write(const char *path, const char *buf, size_t size,
+                     off_t offset, struct fuse_file_info *fi)
+{
+    int fd;
+    int res;
+    //NO 1
+    char encrypted_path[1000] = "";
+    cipherString(path, encrypted_path, encryption_key);
+    char fpath[1000];
+    if (strcmp(path, "/") == 0)
+    {
+        path = mountable;
+        sprintf(fpath, "%s", encrypted_path);
+    }
+    else
+        sprintf(fpath, "%s%s", mountable, encrypted_path);
+
+    fd = open(fpath, O_WRONLY);
+    if (fd == -1)
+        return -errno;
+
+    res = pwrite(fd, buf, size, offset);
+    if (res == -1)
+        res = -errno;
+
+    close(fd);
+    return res;
+}
+
 static int xmp_mkdir(const char *path, mode_t mode)
 {
     int res;
     char fpath[1000];
-    sprintf(fpath, "%s%s", mountable, path);
+    char encrypted_path[1000] = "";
+    cipherString(path, encrypted_path, encryption_key);
+    sprintf(fpath, "%s%s", mountable, encrypted_path);
     res = mkdir(fpath, mode);
     if (res == -1)
         return -errno;
@@ -266,6 +297,7 @@ static struct fuse_operations xmp_oper = {
     .init = xmp_init,
     .destroy = xmp_destroy,
     .mkdir = xmp_mkdir,
+    .write = xmp_write,
 };
 
 int main(int argc, char *argv[])
