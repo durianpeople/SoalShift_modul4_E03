@@ -156,9 +156,11 @@ void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
 {
     //NO 2
     char target[1000];
-    sprintf(target, "%s%s", mountable, "/Videos");
+    char encrypted_foldername[1000] = "";
+    cipherString("/Videos", encrypted_foldername, encryption_key);
+    sprintf(target, "%s%s", mountable, encrypted_foldername);
     struct stat st = {0};
-
+    printf("Create folder %s\n", target);
     if (stat(target, &st) == -1)
     {
         mkdir(target, 0700);
@@ -169,7 +171,10 @@ void xmp_destroy(void *private_data) //sebelum unmount
 {
     //NO 2
     char target[1000];
-    sprintf(target, "%s%s", mountable, "/Videos");
+    char encrypted_foldername[1000] = "";
+    cipherString("/Videos", encrypted_foldername, encryption_key);
+    sprintf(target, "%s%s", mountable, encrypted_foldername);
+    printf("Destroy folder %s\n", target);
     rmdir(target);
 }
 
