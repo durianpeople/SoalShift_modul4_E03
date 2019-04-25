@@ -14,7 +14,7 @@
 
 static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
 static const char *mountpoint = "/home/durianpeople/Documents/Notes/SISOP/REPO/mount_point";
-const int encryption_key = 17;
+const int encryption_key = 0;
 
 char outputcipher[2] = "";
 char *cipher(char input, int key)
