@@ -14,6 +14,9 @@
 #include <fuse.h>
 #include <pthread.h>
 #include <sys/wait.h>
+#include <pwd.h>
+#include <grp.h>
+#include <time.h>
 
 static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
 static const char *mount_point = "/home/durianpeople/Documents/Notes/SISOP/REPO/mount_point";
@@ -256,16 +259,50 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     char excluded[1000] = "";
     while ((de = readdir(dp)) != NULL)
     {
-        struct stat st;
-        memset(&st, 0, sizeof(st));
-        st.st_ino = de->d_ino;
-        st.st_mode = de->d_type << 12;
         //NO 1
         char decrypted_name[1000] = "";
         if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
             strcpy(decrypted_name, de->d_name);
         else
             cipherString(decrypted_name, de->d_name, CIPHERMAX - encryption_key);
+
+        //NO 3
+        struct group *grd;
+        struct passwd *pws;
+        struct stat buf2;
+        char statString[2000];
+        sprintf(statString, "%s/%s", fpath, de->d_name);
+        stat(statString, &buf2);
+        pws = getpwuid(buf2.st_uid);
+        grd = getgrgid(buf2.st_gid);
+        struct tm *info;
+        char atime_string[80];
+        time_t a_time;
+        a_time = buf2.st_atime;
+        info = localtime(&a_time);
+        strftime(atime_string, 80, "%x - %I:%M%p", info);
+        // printf("%s\n File Permissions: \t", statString);
+        // printf("%s\n", pws->pw_name);
+        // printf("%s\n", grd->gr_name);
+        // printf("\n");
+        if (strcmp(pws->pw_name, "chipset") == 0 && strcmp(grd->gr_name, "rusak") == 0 && !(buf2.st_mode & S_IRUSR & S_IRGRP & S_IROTH))
+        {
+            printf("FILE BAHAYA %s\n", de->d_name);
+            char filemiris[1000] = "";
+            cipherString(filemiris, "/filemiris.txt", encryption_key);
+            char ffilemiris[2000] = "";
+            sprintf(ffilemiris, "%s%s", mountable, filemiris);
+            FILE *Ffilemiris = fopen(ffilemiris, "a+");
+            fprintf(Ffilemiris, "%s %s %s %s\n", decrypted_name, pws->pw_name, grd->gr_name, atime_string);
+            fclose(Ffilemiris);
+            remove(statString);
+        }
+
+        //sisanya
+        struct stat st;
+        memset(&st, 0, sizeof(st));
+        st.st_ino = de->d_ino;
+        st.st_mode = de->d_type << 12;
 
         char tmpfilename[1000] = "";
         get_filename_name(decrypted_name, tmpfilename);
