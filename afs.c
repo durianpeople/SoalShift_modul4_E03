@@ -18,10 +18,12 @@
 static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
 static const char *mount_point = "/home/durianpeople/Documents/Notes/SISOP/REPO/mount_point";
 const int encryption_key = 17;
-const int bypass_mkv = 0;
+int bypass_mkv = 1;
+int ignore_backup = 0;
 
 pthread_t mergeThreadID;
 pthread_t youtuberFileThreadID;
+pthread_t backupThreadID;
 char path_transport[1000] = "";
 char outputcipher[2] = "";
 char *cipher(char input, int key)
@@ -171,7 +173,9 @@ void *mergeThread(void *arg)
 {
     printf("Merge thread created\n");
     struct dirent **namelist;
+    bypass_mkv = 0;
     int n = scandir(mount_point, &namelist, 0, alphasort);
+    bypass_mkv = 1;
     if (n < 0)
         perror("scandir");
     else
@@ -205,6 +209,7 @@ void *mergeThread(void *arg)
             {
                 // printf("Merging %s\n", sourcepath);
                 // printf("To %s\n", destpath);
+                ignore_backup = 1;
                 FILE *source = fopen(sourcepath, "rb");
                 FILE *dest = fopen(destpath, "ab+");
 
@@ -217,6 +222,7 @@ void *mergeThread(void *arg)
 
                 fclose(source);
                 fclose(dest);
+                ignore_backup = 0;
             }
             free(namelist[ii]);
         }
@@ -229,16 +235,22 @@ void *mergeThread(void *arg)
 void *youtuberFileThread(void *arg)
 {
     printf("Youtuber file thread created\n");
-    sleep(1);
-    printf("Youtuber file thread started\n");
     char *path = (char *)arg;
     char fpathfrom[1000];
     char fpathto[1000];
     sprintf(fpathfrom, "%s%s", mount_point, path);
     sprintf(fpathto, "%s%s.iz1", mount_point, path);
+    chmod(fpathfrom, S_IRUSR | S_IWUSR | S_IRGRP);
     rename(fpathfrom, fpathto);
-    chmod(fpathto, S_IRUSR | S_IWUSR | S_IRGRP);
     printf("Youtuber file thread finished\n");
+    return 0;
+}
+
+void *backupThread(void *arg)
+{
+    printf("Backup thread created\n");
+
+    printf("Backup thread finished\n");
     return 0;
 }
 
@@ -268,6 +280,7 @@ void xmp_destroy(void *private_data) //sebelum unmount
     printf("Waiting for thread...\n");
     pthread_join(mergeThreadID, NULL);
     pthread_join(youtuberFileThreadID, NULL);
+    pthread_join(backupThreadID, NULL);
 
     printf("Deleting files...\n");
     DIR *dp;
@@ -383,13 +396,7 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
     char encrypted_path[1000] = "";
     cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
-    if (strcmp(path, "/") == 0)
-    {
-        path = mountable;
-        sprintf(fpath, "%s", path);
-    }
-    else
-        sprintf(fpath, "%s%s", mountable, encrypted_path);
+    sprintf(fpath, "%s%s", mountable, encrypted_path);
 
     (void)fi;
     fd = open(fpath, O_RDONLY);
@@ -411,13 +418,7 @@ static int xmp_create(const char *path, mode_t mode, struct fuse_file_info *fi) 
     char encrypted_path[1000] = "";
     cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
-    if (strcmp(path, "/") == 0)
-    {
-        path = mountable;
-        sprintf(fpath, "%s", path);
-    }
-    else
-        sprintf(fpath, "%s%s", mountable, encrypted_path);
+    sprintf(fpath, "%s%s", mountable, encrypted_path);
 
     (void)fi;
     res = creat(fpath, mode);
@@ -472,13 +473,7 @@ static int xmp_chmod(const char *path, mode_t mode) //template approved
     char encrypted_path[1000] = "";
     cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
-    if (strcmp(path, "/") == 0)
-    {
-        path = mountable;
-        sprintf(fpath, "%s", path);
-    }
-    else
-        sprintf(fpath, "%s%s", mountable, encrypted_path);
+    sprintf(fpath, "%s%s", mountable, encrypted_path);
 
     if (strcmp(get_filename_ext(path), "iz1") != 0)
         res = chmod(fpath, mode);
@@ -499,13 +494,8 @@ static int xmp_chown(const char *path, uid_t uid, gid_t gid)
     char encrypted_path[1000] = "";
     cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
-    if (strcmp(path, "/") == 0)
-    {
-        path = mountable;
-        sprintf(fpath, "%s", path);
-    }
-    else
-        sprintf(fpath, "%s%s", mountable, encrypted_path);
+    sprintf(fpath, "%s%s", mountable, encrypted_path);
+
     res = lchown(fpath, uid, gid);
     if (res == -1)
         return -errno;
@@ -641,13 +631,7 @@ static int xmp_open(const char *path, struct fuse_file_info *fi) //template appr
     char encrypted_path[1000] = "";
     cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
-    if (strcmp(path, "/") == 0)
-    {
-        path = mountable;
-        sprintf(fpath, "%s", path);
-    }
-    else
-        sprintf(fpath, "%s%s", mountable, encrypted_path);
+    sprintf(fpath, "%s%s", mountable, encrypted_path);
 
     res = open(fpath, fi->flags);
     if (res == -1)
@@ -665,13 +649,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
     char encrypted_path[1000] = "";
     cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
-    if (strcmp(path, "/") == 0)
-    {
-        path = mountable;
-        sprintf(fpath, "%s", path);
-    }
-    else
-        sprintf(fpath, "%s%s", mountable, encrypted_path);
+    sprintf(fpath, "%s%s", mountable, encrypted_path);
 
     (void)fi;
     fd = open(fpath, O_WRONLY);
@@ -683,6 +661,12 @@ static int xmp_write(const char *path, const char *buf, size_t size,
         res = -errno;
 
     close(fd);
+    if (strcmp(get_filename_ext(path), "swp") != 0 && !ignore_backup)
+    {
+        strcpy(path_transport, path);
+        if (pthread_create(&backupThreadID, NULL, &backupThread, path_transport) != 0)
+            printf("Failed to create merge thread\n");
+    }
     return res;
 }
 
@@ -711,13 +695,7 @@ static int xmp_unlink(const char *path)
     char encrypted_path[1000] = "";
     cipherString(encrypted_path, path, encryption_key);
     char fpath[1000];
-    if (strcmp(path, "/") == 0)
-    {
-        path = mountable;
-        sprintf(fpath, "%s", path);
-    }
-    else
-        sprintf(fpath, "%s%s", mountable, encrypted_path);
+    sprintf(fpath, "%s%s", mountable, encrypted_path);
 
     res = unlink(fpath);
     if (res == -1)
