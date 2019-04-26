@@ -18,8 +18,8 @@
 #include <grp.h>
 #include <time.h>
 
-static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
-static const char *mount_point = "/home/durianpeople/Documents/Notes/SISOP/REPO/mount_point";
+static const char *mountable = "/home/akmal/Documents/SoalShift_modul4_E03/mountable";
+static const char *mount_point = "/home/akmal/Documents/SoalShift_modul4_E03/mount_point";
 const int encryption_key = 17;
 int bypass_mkv = 1;
 int ignore_backup = 0;
@@ -29,6 +29,8 @@ pthread_t youtuberFileThreadID;
 pthread_t backupThreadID;
 char path_transport[1000] = "";
 char outputcipher[2] = "";
+char original_path[2000];
+char backup_path[3000];
 char *cipher(char input, int key)
 {
     char charset[] = {113, 69, 49, 126, 32, 89, 77, 85, 82, 50, 34, 96, 104, 78, 73, 100, 80, 122, 105, 37, 94, 116, 64, 40, 65, 111, 58, 61, 67, 81, 44, 110, 120, 52, 83, 91, 55, 109, 72, 70, 121, 101, 35, 97, 84, 54, 43, 118, 41, 68, 102, 75, 76, 36, 114, 63, 98, 107, 79, 71, 66, 62, 125, 33, 57, 95, 119, 86, 39, 93, 106, 99, 112, 53, 74, 90, 38, 88, 108, 124, 92, 56, 115, 59, 103, 60, 123, 51, 46, 117, 42, 87, 45, 48}; //length: 94
@@ -156,26 +158,75 @@ void *youtuberFileThread(void *arg)
     return 0;
 }
 
+// void *copyThread(void *arg) {
+//   char *argv[4] = {"copy", filename, backup_path, NULL};
+//   execv("/bin/cp", argv);
+//   return 0;
+// }
+
 void *backupThread(void *path)
 {
     printf("Backup thread created\n");
 
     //create folder Backup
+    char target[1000];
+    // char encrypted_foldername[1000] = "";
+    // cipherString(encrypted_foldername, "/mount_point/Backup", encryption_key);
+    sprintf(target, "%s/Backup", mount_point);
+    struct stat st = {0};
+    printf("Create folder %s\n", target);
+    if (stat(target, &st) == -1)
+    {
+        mkdir(target, 0700);
+    }
 
     char filename[1000] = "";
     get_filename_name((char *)path, filename);
-    char original_path[2000];
+    
     sprintf(original_path, "%s%s", mount_point, (char *)path);
     time_t current_time = time(NULL);
     struct tm *current_time_tm;
     current_time_tm = localtime(&current_time);
     char timestamp[1000] = "";
     strftime(timestamp, 1000, "%Y-%m-%d_%H:%M:%S", current_time_tm);
-    char backup_path[3000];
-    sprintf(backup_path, "%s/Backup/%s_%s.%s", mount_point, filename, timestamp, get_filename_ext((char *)path));
+    
+    sprintf(backup_path, "%s/Backup%s_%s.%s", mount_point, filename, timestamp, get_filename_ext((char *)path));
 
+    printf("%s\n", original_path);
+    printf("%s\n", backup_path);
     ignore_backup = 1;
     //copy dari original_path ke backup_path
+    // pthread_t copyThreadID;
+    // pthread_create(&copyThreadID, NULL, &copyThread, NULL);
+    // pthread_join(copyThreadID, NULL);
+    char ch;
+    FILE *source, *ftarget;
+
+    source = fopen(original_path, "r");
+
+    if (source == NULL)
+    {
+      printf("Press any key to exit...\n");
+      exit(EXIT_FAILURE);
+    }
+
+    ftarget = fopen(backup_path, "w");
+
+    if (ftarget == NULL)
+    {
+      fclose(source);
+      printf("Press any key to exit...\n");
+      exit(EXIT_FAILURE);
+    }
+
+    while ((ch = fgetc(source)) != EOF)
+      fputc(ch, ftarget);
+
+    printf("File copied successfully.\n");
+
+    fclose(source);
+    fclose(ftarget);
+
     ignore_backup = 0;
 
     printf("Backup thread finished\n");
