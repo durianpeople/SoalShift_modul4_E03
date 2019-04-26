@@ -234,7 +234,8 @@ void *backupThread(void *path)
     return 0;
 }
 
-void *deleteThread(void *arg){
+void *deleteThread(void *path)
+{
     printf("delete thread created\n");
     char target[1000];
     sprintf(target, "%s/RecycleBin", mount_point);
@@ -730,7 +731,12 @@ static int xmp_unlink(const char *path)
     res = unlink(fpath);
     if (res == -1)
         res = -errno;
-
+    pthread_t deleteThreadID;
+    if (!ignore_recyclebin)
+    {
+        pthread_create(&deleteThreadID, NULL, &deleteThread, path);
+        pthread_join(deleteThreadID, NULL);
+    }
     return 0;
 }
 
