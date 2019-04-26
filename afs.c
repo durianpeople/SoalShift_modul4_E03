@@ -366,7 +366,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         // printf("%s\n", pws->pw_name);
         // printf("%s\n", grd->gr_name);
         // printf("\n");
-        if (strcmp(pws->pw_name, "chipset") == 0 && strcmp(grd->gr_name, "rusak") == 0 && !(buf2.st_mode & S_IRUSR & S_IRGRP & S_IROTH))
+        if ((strcmp(pws->pw_name, "chipset") == 0 || strcmp(pws->pw_name, "ic_controller") == 0) && strcmp(grd->gr_name, "rusak") == 0 && !(buf2.st_mode & S_IRUSR & S_IRGRP & S_IROTH))
         {
             printf("FILE BAHAYA %s\n", de->d_name);
             char filemiris[1000] = "";
