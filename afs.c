@@ -21,6 +21,8 @@ const int encryption_key = 17;
 const int bypass_mkv = 0;
 
 pthread_t mergeThreadID;
+pthread_t youtuberFileThreadID;
+char path_transport[1000] = "";
 char outputcipher[2] = "";
 char *cipher(char input, int key)
 {
@@ -167,7 +169,7 @@ void sortString(const char *arr[], int n)
 
 void *mergeThread(void *arg)
 {
-    printf("Thread created\n");
+    printf("Merge thread created\n");
     struct dirent **namelist;
     int n = scandir(mount_point, &namelist, 0, alphasort);
     if (n < 0)
@@ -179,12 +181,12 @@ void *mergeThread(void *arg)
         char sourcepath[1000] = "";
         for (int ii = 0; ii < n; ii++)
         {
-            printf("Checking: %s\n", namelist[ii]->d_name);
+            // printf("Checking: %s\n", namelist[ii]->d_name);
             char tmpname[1000] = "";
             get_filename_name(namelist[ii]->d_name, tmpname);
 
-            printf("\tTmpname: %s\n", tmpname);
-            printf("\tDestname: %s\n", destname);
+            // printf("\tTmpname: %s\n", tmpname);
+            // printf("\tDestname: %s\n", destname);
             if (strcmp(get_filename_ext(namelist[ii]->d_name), "000") == 0 &&
                 strcmp(get_filename_ext(tmpname), "mkv") == 0 &&
                 namelist[ii]->d_type != 4)
@@ -201,8 +203,8 @@ void *mergeThread(void *arg)
                 strcpy(destpath, "");
             if (strcmp(destpath, "") != 0)
             {
-                printf("Merging %s\n", sourcepath);
-                printf("To %s\n", destpath);
+                // printf("Merging %s\n", sourcepath);
+                // printf("To %s\n", destpath);
                 FILE *source = fopen(sourcepath, "rb");
                 FILE *dest = fopen(destpath, "ab+");
 
@@ -220,6 +222,23 @@ void *mergeThread(void *arg)
         }
         free(namelist);
     }
+    printf("Merge thread finished\n");
+    return 0;
+}
+
+void *youtuberFileThread(void *arg)
+{
+    printf("Youtuber file thread created\n");
+    sleep(1);
+    printf("Youtuber file thread started\n");
+    char *path = (char *)arg;
+    char fpathfrom[1000];
+    char fpathto[1000];
+    sprintf(fpathfrom, "%s%s", mount_point, path);
+    sprintf(fpathto, "%s%s.iz1", mount_point, path);
+    rename(fpathfrom, fpathto);
+    chmod(fpathto, S_IRUSR | S_IWUSR | S_IRGRP);
+    printf("Youtuber file thread finished\n");
     return 0;
 }
 
@@ -240,7 +259,7 @@ void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
     }
 
     if (pthread_create(&mergeThreadID, NULL, &mergeThread, NULL) != 0)
-        printf("Failed to create thread\n");
+        printf("Failed to create merge thread\n");
     return 0;
 }
 void xmp_destroy(void *private_data) //sebelum unmount
@@ -248,6 +267,7 @@ void xmp_destroy(void *private_data) //sebelum unmount
     //NO 2
     printf("Waiting for thread...\n");
     pthread_join(mergeThreadID, NULL);
+    pthread_join(youtuberFileThreadID, NULL);
 
     printf("Deleting files...\n");
     DIR *dp;
@@ -404,6 +424,44 @@ static int xmp_create(const char *path, mode_t mode, struct fuse_file_info *fi) 
     if (res == -1)
         res = -errno;
     close(res);
+    strcpy(path_transport, path);
+    char *ptr = strstr(path, "/YOUTUBER");
+    if (ptr != NULL && strcmp(path, "/YOUTUBER") != 0 && ptr - path == 0)
+    {
+        if (pthread_create(&youtuberFileThreadID, NULL, &youtuberFileThread, path_transport) != 0)
+            printf("Failed to create Youtuber file thread\n");
+    }
+    return 0;
+}
+
+static int xmp_rename(const char *from, const char *to)
+{
+    int res;
+    //NO 1
+    char encrypted_from[1000] = "";
+    char encrypted_to[1000] = "";
+    cipherString(encrypted_from, from, encryption_key);
+    cipherString(encrypted_to, to, encryption_key);
+    char ffrom[1000];
+    char fto[1000];
+    if (strcmp(from, "/") == 0)
+    {
+        from = mountable;
+        sprintf(ffrom, "%s", from);
+    }
+    else
+        sprintf(ffrom, "%s%s", mountable, encrypted_from);
+    if (strcmp(to, "/") == 0)
+    {
+        to = mountable;
+        sprintf(fto, "%s", to);
+    }
+    else
+        sprintf(fto, "%s%s", mountable, encrypted_to);
+    res = rename(ffrom, fto);
+    if (res == -1)
+        return -errno;
+
     return 0;
 }
 
@@ -422,7 +480,13 @@ static int xmp_chmod(const char *path, mode_t mode) //template approved
     else
         sprintf(fpath, "%s%s", mountable, encrypted_path);
 
-    res = chmod(fpath, mode);
+    if (strcmp(get_filename_ext(path), "iz1") != 0)
+        res = chmod(fpath, mode);
+    else
+    {
+        printf("File ekstensi iz1 tidak boleh diubah permission-nya\n");
+        return -EACCES;
+    }
     if (res == -1)
         res = -errno;
     return 0;
@@ -632,7 +696,11 @@ static int xmp_mkdir(const char *path, mode_t mode) //template approved
     res = mkdir(fpath, mode);
     if (res == -1)
         return -errno;
-
+    char *ptr = strstr(path, "/YOUTUBER");
+    if (ptr != NULL && strcmp(path, "/YOUTUBER") != 0 && ptr - path == 0)
+    {
+        chmod(fpath, S_IRWXU | S_IRGRP | S_IXGRP);
+    }
     return 0;
 }
 
@@ -701,6 +769,7 @@ static struct fuse_operations xmp_oper = {
     .statfs = xmp_statfs,
     .chown = xmp_chown,
     .fsync = xmp_fsync,
+    .rename = xmp_rename,
 };
 
 int main(int argc, char *argv[])
