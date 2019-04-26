@@ -1,0 +1,14 @@
+//deklarasi variabel
+	struct tm *info;
+    char buffer[80];
+    time_t a_time;
+
+//menyimpan nilai buf2
+sprintf(statString, "%s/%s",fpath,de->d_name);
+stat(statString, &buf2);
+
+//mendapatkan waktu terakhir akses(dalam while)
+a_time = buf2.st_atime;
+info = localtime(&a_time); 
+strftime(buffer,80,"%x - %I:%M%p", info);
+printf("Formatted date & time : |%s|\n", buffer );
