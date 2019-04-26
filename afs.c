@@ -18,8 +18,8 @@
 #include <grp.h>
 #include <time.h>
 
-static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
-static const char *mount_point = "/home/durianpeople/Documents/Notes/SISOP/REPO/mount_point";
+static const char *mountable = "/home/akmal/Documents/SoalShift_modul4_E03/mountable";
+static const char *mount_point = "/home/akmal/Documents/SoalShift_modul4_E03/mount_point";;
 const int encryption_key = 17;
 int bypass_mkv = 1;
 int ignore_backup = 0;
@@ -232,19 +232,6 @@ void *backupThread(void *path)
 
     printf("Backup thread finished\n");
     return 0;
-}
-
-void *deleteThread(void *path)
-{
-    printf("delete thread created\n");
-    char target[1000];
-    sprintf(target, "%s/RecycleBin", mount_point);
-    struct stat st = {0};
-    printf("Create folder %s\n", target);
-    if (stat(target, &st) == -1)
-    {
-        mkdir(target, 0700);
-    }
 }
 
 //fungsi xmp_*()
@@ -731,12 +718,6 @@ static int xmp_unlink(const char *path)
     res = unlink(fpath);
     if (res == -1)
         res = -errno;
-    pthread_t deleteThreadID;
-    if (!ignore_recyclebin)
-    {
-        pthread_create(&deleteThreadID, NULL, &deleteThread, path);
-        pthread_join(deleteThreadID, NULL);
-    }
     return 0;
 }
 
