@@ -275,3 +275,105 @@ if (ptr != NULL && strcmp(path, "/YOUTUBER") != 0 && ptr - path == 0)
 }
 ```
 
+Dalam thread, chmod dan rename:
+
+```c
+char *path = (char *)arg;
+char fpathfrom[1000];
+char fpathto[1000];
+sprintf(fpathfrom, "%s%s", mount_point, path);
+sprintf(fpathto, "%s%s.iz1", mount_point, path);
+chmod(fpathfrom, S_IRUSR | S_IWUSR | S_IRGRP);
+rename(fpathfrom, fpathto);
+```
+
+Di `xmp_chmod()`, cek ekstensi:
+
+```c
+if (strcmp(get_filename_ext(path), "iz1") != 0)
+    res = chmod(fpath, mode);
+else
+{
+    printf("File ekstensi iz1 tidak boleh diubah permission-nya\n");
+    return -EACCES;
+}
+```
+
+## SOAL 5
+
+Setelah selesai write pada `xmp_write()`, jika tidak write ke ekstensi **.swp**, maka backup:
+
+```c
+if (strcmp(get_filename_ext(path), "swp") != 0 && !ignore_backup)
+{
+    strcpy(path_transport, path);
+    if (pthread_create(&backupThreadID, NULL, &backupThread, path_transport) != 0)
+        printf("Failed to create merge thread\n");
+}
+```
+
+Di dalam thread backup, ambil path yang ingin di-backup, buat string untuk target backup, lalu copy
+
+```c
+//create folder Backup
+char target[1000];
+// char encrypted_foldername[1000] = "";
+// cipherString(encrypted_foldername, "/mount_point/Backup", encryption_key);
+sprintf(target, "%s/Backup", mount_point);
+struct stat st = {0};
+printf("Create folder %s\n", target);
+if (stat(target, &st) == -1)
+{
+    mkdir(target, 0700);
+}
+
+char filename[1000] = "";
+get_filename_name((char *)path, filename);
+
+sprintf(original_path, "%s%s", mount_point, (char *)path);
+time_t current_time = time(NULL);
+struct tm *current_time_tm;
+current_time_tm = localtime(&current_time);
+char timestamp[1000] = "";
+strftime(timestamp, 1000, "%Y-%m-%d_%H:%M:%S", current_time_tm);
+
+sprintf(backup_path, "%s/Backup%s_%s.%s", mount_point, filename, timestamp, get_filename_ext((char *)path));
+
+printf("%s\n", original_path);
+printf("%s\n", backup_path);
+ignore_backup = 1;
+//copy dari original_path ke backup_path
+// pthread_t copyThreadID;
+// pthread_create(&copyThreadID, NULL, &copyThread, NULL);
+// pthread_join(copyThreadID, NULL);
+char ch;
+FILE *source, *ftarget;
+
+source = fopen(original_path, "r");
+
+if (source == NULL)
+{
+    printf("Press any key to exit...\n");
+    exit(EXIT_FAILURE);
+}
+
+ftarget = fopen(backup_path, "w");
+
+if (ftarget == NULL)
+{
+    fclose(source);
+    printf("Press any key to exit...\n");
+    exit(EXIT_FAILURE);
+}
+
+while ((ch = fgetc(source)) != EOF)
+    fputc(ch, ftarget);
+
+printf("File copied successfully.\n");
+
+fclose(source);
+fclose(ftarget);
+
+ignore_backup = 0;
+```
+

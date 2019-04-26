@@ -18,11 +18,12 @@
 #include <grp.h>
 #include <time.h>
 
-static const char *mountable = "/home/akmal/Documents/SoalShift_modul4_E03/mountable";
-static const char *mount_point = "/home/akmal/Documents/SoalShift_modul4_E03/mount_point";
+static const char *mountable = "/home/durianpeople/Documents/Notes/SISOP/REPO/mountable";
+static const char *mount_point = "/home/durianpeople/Documents/Notes/SISOP/REPO/mount_point";
 const int encryption_key = 17;
 int bypass_mkv = 1;
 int ignore_backup = 0;
+int ignore_recyclebin = 0;
 
 pthread_t mergeThreadID;
 pthread_t youtuberFileThreadID;
@@ -182,14 +183,14 @@ void *backupThread(void *path)
 
     char filename[1000] = "";
     get_filename_name((char *)path, filename);
-    
+
     sprintf(original_path, "%s%s", mount_point, (char *)path);
     time_t current_time = time(NULL);
     struct tm *current_time_tm;
     current_time_tm = localtime(&current_time);
     char timestamp[1000] = "";
     strftime(timestamp, 1000, "%Y-%m-%d_%H:%M:%S", current_time_tm);
-    
+
     sprintf(backup_path, "%s/Backup%s_%s.%s", mount_point, filename, timestamp, get_filename_ext((char *)path));
 
     printf("%s\n", original_path);
@@ -206,21 +207,21 @@ void *backupThread(void *path)
 
     if (source == NULL)
     {
-      printf("Press any key to exit...\n");
-      exit(EXIT_FAILURE);
+        printf("Press any key to exit...\n");
+        exit(EXIT_FAILURE);
     }
 
     ftarget = fopen(backup_path, "w");
 
     if (ftarget == NULL)
     {
-      fclose(source);
-      printf("Press any key to exit...\n");
-      exit(EXIT_FAILURE);
+        fclose(source);
+        printf("Press any key to exit...\n");
+        exit(EXIT_FAILURE);
     }
 
     while ((ch = fgetc(source)) != EOF)
-      fputc(ch, ftarget);
+        fputc(ch, ftarget);
 
     printf("File copied successfully.\n");
 
