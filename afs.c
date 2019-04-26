@@ -156,9 +156,27 @@ void *youtuberFileThread(void *arg)
     return 0;
 }
 
-void *backupThread(void *arg)
+void *backupThread(void *path)
 {
     printf("Backup thread created\n");
+
+    //create folder Backup
+
+    char filename[1000] = "";
+    get_filename_name((char *)path, filename);
+    char original_path[2000];
+    sprintf(original_path, "%s%s", mount_point, (char *)path);
+    time_t current_time = time(NULL);
+    struct tm *current_time_tm;
+    current_time_tm = localtime(&current_time);
+    char timestamp[1000] = "";
+    strftime(timestamp, 1000, "%Y-%m-%d_%H:%M:%S", current_time_tm);
+    char backup_path[3000];
+    sprintf(backup_path, "%s/Backup/%s_%s.%s", mount_point, filename, timestamp, get_filename_ext((char *)path));
+
+    ignore_backup = 1;
+    //copy dari original_path ke backup_path
+    ignore_backup = 0;
 
     printf("Backup thread finished\n");
     return 0;
@@ -610,6 +628,10 @@ static int xmp_write(const char *path, const char *buf, size_t size,
         strcpy(path_transport, path);
         if (pthread_create(&backupThreadID, NULL, &backupThread, path_transport) != 0)
             printf("Failed to create merge thread\n");
+        // char *ptr = strstr(path, "/Backup");
+        // if (!(ptr != NULL && strcmp(path, "/Backup") != 0 && ptr - path == 0))
+        // {
+        // }
     }
     return res;
 }
