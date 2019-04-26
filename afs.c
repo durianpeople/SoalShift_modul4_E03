@@ -233,6 +233,18 @@ void *backupThread(void *path)
     return 0;
 }
 
+void *deleteThread(void *arg){
+    printf("delete thread created\n");
+    char target[1000];
+    sprintf(target, "%s/RecycleBin", mount_point);
+    struct stat st = {0};
+    printf("Create folder %s\n", target);
+    if (stat(target, &st) == -1)
+    {
+        mkdir(target, 0700);
+    }
+}
+
 //fungsi xmp_*()
 
 void *xmp_init(struct fuse_conn_info *conn) //sebelum mount
